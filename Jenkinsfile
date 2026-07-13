@@ -73,10 +73,9 @@ pipeline {
             steps {
                 echo 'Deploying with docker-compose...'
                 sh 'docker compose down || true'
-                sh 'docker compose up -d --build'
+                sh 'docker compose up -d --no-build'
             }
         }
-    }
 
     post {
         success {
