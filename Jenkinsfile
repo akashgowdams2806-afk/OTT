@@ -6,7 +6,7 @@ pipeline {
     }
 
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
         DOCKER_IMAGE = "akashms54/ott-platform"
         IMAGE_TAG = "${env.BUILD_NUMBER}"
     }
@@ -109,7 +109,7 @@ pipeline {
         }
 
         always {
-            sh 'docker logout || true'
-        }
+            echo 'Pipeline finished.'
+       }
     }
 }
