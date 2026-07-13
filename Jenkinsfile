@@ -2,15 +2,13 @@ pipeline {
     agent any
 
     tools {
-        maven 'Maven3'   // Name must match a Maven installation configured in Jenkins > Global Tool Configuration
-              // Name must match a JDK installation configured in Jenkins > Global Tool Configuration
+        maven 'Maven3'
     }
 
     environment {
-        // Change these to match your own Docker Hub / registry account
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds') // Jenkins credential ID (username/password)
-        DOCKER_IMAGE           = "akashms54/ott-platform"
-        IMAGE_TAG              = "${env.BUILD_NUMBER}"
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
+        DOCKER_IMAGE = "akashms54/ott-platform"
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
     }
 
     options {
@@ -39,6 +37,12 @@ pipeline {
                 echo 'Running unit tests...'
                 sh 'mvn -B test'
             }
+
+            post {
+                always {
+                    junit '**/target/surefire-reports/*.xml'
+                }
+            }
         }
 
         stage('Package') {
@@ -46,9 +50,11 @@ pipeline {
                 echo 'Packaging application as JAR...'
                 sh 'mvn -B package -DskipTests'
             }
+
             post {
                 success {
-                    archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+                    archiveArtifacts artifacts: 'target/*.jar',
+                                     fingerprint: true
                 }
             }
         }
@@ -56,15 +62,28 @@ pipeline {
         stage('Docker Build') {
             steps {
                 echo 'Building Docker image...'
-                sh "docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} -t ${DOCKER_IMAGE}:latest ."
+
+                sh """
+                docker build \
+                -t ${DOCKER_IMAGE}:${IMAGE_TAG} \
+                -t ${DOCKER_IMAGE}:latest .
+                """
             }
         }
 
         stage('Docker Push') {
             steps {
                 echo 'Pushing Docker image to registry...'
-                sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
+
+                sh '''
+                echo $DOCKERHUB_CREDENTIALS_PSW | \
+                docker login \
+                -u $DOCKERHUB_CREDENTIALS_USR \
+                --password-stdin
+                '''
+
                 sh "docker push ${DOCKER_IMAGE}:${IMAGE_TAG}"
+
                 sh "docker push ${DOCKER_IMAGE}:latest"
             }
         }
@@ -72,18 +91,23 @@ pipeline {
         stage('Deploy') {
             steps {
                 echo 'Deploying with docker-compose...'
+
                 sh 'docker compose down || true'
+
                 sh 'docker compose up -d --no-build'
             }
         }
+    }
 
     post {
         success {
             echo 'Pipeline completed successfully!'
         }
+
         failure {
             echo 'Pipeline failed. Check the logs above.'
         }
+
         always {
             sh 'docker logout || true'
         }
