@@ -39,11 +39,6 @@ pipeline {
                 echo 'Running unit tests...'
                 sh 'mvn -B test'
             }
-            post {
-                always {
-                    junit '**/target/surefire-reports/*.xml'
-                }
-            }
         }
 
         stage('Package') {
